@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -22,7 +22,8 @@ function Index() {
     s.defer = true;
     document.body.appendChild(s);
   }, []);
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://YOUR-APP-DOMAIN";
+  const [origin, setOrigin] = useState("https://YOUR-APP-DOMAIN");
+  useEffect(() => setOrigin(window.location.origin), []);
   return (
     <main className="min-h-screen bg-background px-6 py-16 text-foreground">
       <div className="mx-auto max-w-2xl space-y-8">
