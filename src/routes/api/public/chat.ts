@@ -39,24 +39,43 @@ export const Route = createFileRoute("/api/public/chat")({
         if (messages[messages.length - 1]?.role !== "user") {
           return new Response("Please send a message.", { status: 400, headers: CORS });
         }
-        const key = process.env["LOVABLE_API_KEY"];
-        if (!key) return new Response("Assistant is not configured.", { status: 500, headers: CORS });
+        // Local/own-key mode: set GEMINI_API_KEY in .env to call Google directly.
+        const geminiKey = process.env["GEMINI_API_KEY"];
+        const lovableKey = process.env["LOVABLE_API_KEY"];
+        if (!geminiKey && !lovableKey) {
+          return new Response("Assistant is not configured.", { status: 500, headers: CORS });
+        }
+        const payload = {
+          stream: true,
+          messages: [{ role: "system", content: SYSTEM_PROMPT }, ...messages],
+        };
 
-        const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Lovable-API-Key": key,
-            Authorization: `Bearer ${key}`,
-            "X-Lovable-AIG-SDK": "fetch",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            stream: true,
-            messages: [{ role: "system", content: SYSTEM_PROMPT }, ...messages],
-          }),
-          signal: request.signal,
-        });
+        let upstream: Response;
+        try {
+          upstream = geminiKey
+            ? await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${geminiKey}` },
+                body: JSON.stringify({ ...payload, model: "gemini-2.5-flash" }),
+                signal: request.signal,
+              })
+            : await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Lovable-API-Key": lovableKey!,
+                  Authorization: `Bearer ${lovableKey}`,
+                  "X-Lovable-AIG-SDK": "fetch",
+                },
+                body: JSON.stringify({ ...payload, model: "google/gemini-2.5-flash" }),
+                signal: request.signal,
+              });
+        } catch {
+          return new Response("Sorry, I couldn't answer right now. Please try again.", {
+            status: 502,
+            headers: CORS,
+          });
+        }
 
         if (!upstream.ok || !upstream.body) {
           const status = upstream.status;
