@@ -8,7 +8,7 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { loadEnv } from "vite";
 
 // Make non-VITE_ values from a local .env (e.g. GEMINI_API_KEY) visible to server routes in dev.
-const localEnv = loadEnv(process.env.NODE_ENV ?? "development", process.cwd(), "");
+const localEnv = loadEnv(process.env["NODE_ENV"] ?? "development", process.cwd(), "");
 for (const [k, v] of Object.entries(localEnv)) {
   if (process.env[k] === undefined) process.env[k] = v;
 }
