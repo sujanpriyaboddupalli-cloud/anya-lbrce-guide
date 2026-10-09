@@ -259,7 +259,7 @@
       history.pop();
       bubble.textContent = (e && e.message) || "Connection problem. Please try again.";
     } finally {
-      busy = false; sendBtn.disabled = false;
+      busy = false; sendBtn.disabled = ended;
     }
   }
   form.onsubmit = function (e) { e.preventDefault(); send(input.value); };
