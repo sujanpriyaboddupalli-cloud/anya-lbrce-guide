@@ -36,10 +36,10 @@ export const Route = createFileRoute("/api/public/chat")({
         } catch {
           /* ignore */
         }
-        if (!messages.length || messages[messages.length - 1].role !== "user") {
+        if (messages[messages.length - 1]?.role !== "user") {
           return new Response("Please send a message.", { status: 400, headers: CORS });
         }
-        const key = process.env.LOVABLE_API_KEY;
+        const key = process.env["LOVABLE_API_KEY"];
         if (!key) return new Response("Assistant is not configured.", { status: 500, headers: CORS });
 
         const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
