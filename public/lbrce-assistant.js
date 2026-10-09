@@ -11,12 +11,15 @@
   var API = (script && script.getAttribute("data-api")) || origin + "/api/public/chat";
   var TTS_API = (script && script.getAttribute("data-tts")) || origin + "/api/public/tts";
 
+  var AVATAR = (script && script.getAttribute("data-avatar")) || origin + "/anya-avatar.png";
+
   var css = `
   .lbx,.lbx *{box-sizing:border-box;font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-  .lbx-fab{position:fixed;right:22px;bottom:22px;width:60px;height:60px;border-radius:50%;border:0;cursor:pointer;z-index:2147483000;
+  .lbx-fab{position:fixed;right:22px;bottom:22px;width:64px;height:64px;padding:3px;border-radius:50%;border:0;cursor:pointer;z-index:2147483000;
     background:linear-gradient(145deg,#0f172a,#334155);color:#fff;box-shadow:0 12px 30px rgba(15,23,42,.35);display:grid;place-items:center;transition:transform .25s}
   .lbx-fab:hover{transform:translateY(-2px) scale(1.04)}
   .lbx-fab svg{width:26px;height:26px}
+  .lbx-fab.closeicon{padding:0}
   .lbx-fab .lbx-ping{position:absolute;top:6px;right:6px;width:12px;height:12px;border-radius:50%;background:#22c55e;border:2px solid #0f172a}
   .lbx-panel{position:fixed;right:22px;bottom:94px;width:380px;max-width:calc(100vw - 24px);height:600px;max-height:calc(100vh - 120px);z-index:2147483000;
     display:flex;flex-direction:column;border-radius:22px;overflow:hidden;background:rgba(255,255,255,.82);backdrop-filter:blur(18px) saturate(160%);
@@ -24,7 +27,8 @@
     opacity:0;transform:translateY(24px) scale(.98);pointer-events:none;transition:opacity .3s ease,transform .35s cubic-bezier(.2,.9,.3,1.2)}
   .lbx-panel.open{opacity:1;transform:none;pointer-events:auto}
   .lbx-head{display:flex;align-items:center;gap:12px;padding:16px 16px;background:linear-gradient(135deg,#0f172a,#334155);color:#f8fafc}
-  .lbx-av{position:relative;width:44px;height:44px;border-radius:50%;background:linear-gradient(145deg,#e2e8f0,#94a3b8);display:grid;place-items:center;color:#0f172a;font-weight:700;font-size:17px}
+  .lbx-av{position:relative;width:46px;height:46px;border-radius:50%;border:2px solid rgba(255,255,255,.7);background:linear-gradient(145deg,#e2e8f0,#94a3b8);display:grid;place-items:center;color:#0f172a;font-weight:700;font-size:17px}
+  .lbx-av img,.lbx-fab img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}
   .lbx-av i{position:absolute;right:0;bottom:1px;width:12px;height:12px;border-radius:50%;background:#22c55e;border:2px solid #1e293b;animation:lbxp 2s infinite}
   @keyframes lbxp{0%{box-shadow:0 0 0 0 rgba(34,197,94,.6)}70%{box-shadow:0 0 0 7px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
   .lbx-title{flex:1;line-height:1.2}.lbx-title b{display:block;font-size:15px}.lbx-title span{font-size:12px;color:#cbd5e1}
@@ -67,12 +71,13 @@
   style.textContent = css;
   document.head.appendChild(style);
 
+  var FABIN = '<img src="' + AVATAR + '" alt="Anya" />' + '<span class="lbx-ping"></span>';
   var root = document.createElement("div");
   root.className = "lbx";
   root.innerHTML =
-    '<button class="lbx-fab" aria-label="Chat with Anya, LBRCE Guide">' + I.chat + '<span class="lbx-ping"></span></button>' +
+    '<button class="lbx-fab" aria-label="Chat with Anya, LBRCE Guide">' + FABIN + '</button>' +
     '<section class="lbx-panel" role="dialog" aria-label="LBRCE Assistant">' +
-    '<header class="lbx-head"><div class="lbx-av">A<i></i></div><div class="lbx-title"><b>Anya, LBRCE Guide</b><span>Online · Usually replies instantly</span></div>' +
+    '<header class="lbx-head"><div class="lbx-av"><img src="' + AVATAR + '" alt="Anya" /><i></i></div><div class="lbx-title"><b>Anya, LBRCE Guide</b><span>Online · Usually replies instantly</span></div>' +
     '<button class="lbx-ib lbx-end" title="End this chat">End chat</button><button class="lbx-ib lbx-tts" title="Read answers aloud">' + I.vol + '</button><button class="lbx-ib lbx-close" title="Close">' + I.x + "</button></header>" +
     '<div class="lbx-body" aria-live="polite"></div>' +
     '<div class="lbx-chips"></div>' +
@@ -196,7 +201,7 @@
     var o = open === undefined ? !panel.classList.contains("open") : open;
     panel.classList.toggle("open", o);
     fab.classList.toggle("hide", o);
-    fab.innerHTML = (o ? I.x : I.chat) + (o ? "" : '<span class="lbx-ping"></span>');
+    fab.innerHTML = o ? I.x : FABIN;
     if (o) {
       if (!body.children.length && !ended) greet();
       setTimeout(function () { input.focus(); }, 300);
