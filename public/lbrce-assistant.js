@@ -9,6 +9,7 @@
   var script = document.currentScript;
   var origin = script && script.src ? new URL(script.src).origin : location.origin;
   var API = (script && script.getAttribute("data-api")) || origin + "/api/public/chat";
+  var TTS_API = (script && script.getAttribute("data-tts")) || origin + "/api/public/tts";
 
   var css = `
   .lbx,.lbx *{box-sizing:border-box;font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
@@ -97,14 +98,86 @@
     body.scrollTop = body.scrollHeight;
     return d;
   }
-  function speak(t) {
-    if (!ttsOn || !("speechSynthesis" in window)) return;
+  function decodePCMChunk(pending, b64) {
+    var bin = atob(b64), inc = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) inc[i] = bin.charCodeAt(i);
+    var bytes = new Uint8Array(pending.length + inc.length);
+    bytes.set(pending); bytes.set(inc, pending.length);
+    var usable = bytes.length - (bytes.length % 2);
+    var view = new DataView(bytes.buffer);
+    var samples = new Float32Array(usable / 2);
+    for (var j = 0; j < samples.length; j++) samples[j] = view.getInt16(j * 2, true) / 32768;
+    return { samples: samples, pending: bytes.slice(usable) };
+  }
+  var playCtl = null;
+  function stopSpeaking() {
+    if (playCtl) {
+      playCtl.controller.abort();
+      playCtl.sources.forEach(function (s) { try { s.stop(); } catch (e) {} });
+      try { playCtl.ctx.close(); } catch (e) {}
+      playCtl = null;
+    }
+    if ("speechSynthesis" in window) speechSynthesis.cancel();
+  }
+  function fallbackSpeak(t) {
+    if (!("speechSynthesis" in window)) return;
     speechSynthesis.cancel();
-    var u = new SpeechSynthesisUtterance(t.replace(/[*#_`]/g, "").replace(/https?:\/\/\S+/g, "the website"));
+    var u = new SpeechSynthesisUtterance(t);
     u.lang = "en-IN"; u.rate = 1.02;
     var v = speechSynthesis.getVoices().filter(function (x) { return /en-IN/i.test(x.lang); })[0];
     if (v) u.voice = v;
     speechSynthesis.speak(u);
+  }
+  async function speak(text) {
+    if (!ttsOn) return;
+    var t = text.replace(/[*#_`>]/g, " ").replace(/https?:\/\/\S+/g, " the website ").replace(/\s+/g, " ").trim();
+    if (!t) return;
+    stopSpeaking();
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return fallbackSpeak(t);
+    var ctl = new AbortController(), ctx = new AC({ sampleRate: 24000 }), sources = [];
+    playCtl = { controller: ctl, ctx: ctx, sources: sources };
+    try {
+      if (ctx.state === "suspended") await ctx.resume();
+      var res = await fetch(TTS_API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: t }), signal: ctl.signal });
+      if (!res.ok || !res.body) throw new Error("tts " + res.status);
+      var reader = res.body.getReader(), dec = new TextDecoder();
+      var buf = "", pending = new Uint8Array(0), playhead = ctx.currentTime + 0.05;
+      while (true) {
+        var r = await reader.read();
+        if (r.done) break;
+        buf += dec.decode(r.value, { stream: true });
+        var lines = buf.split("\n");
+        buf = lines.pop() || "";
+        for (var i = 0; i < lines.length; i++) {
+          var line = lines[i].trim();
+          if (!line.startsWith("data:")) continue;
+          var data = line.slice(5).trim();
+          if (!data) continue;
+          var ev;
+          try { ev = JSON.parse(data); } catch (e) { continue; }
+          if (ev.type === "error") throw new Error("speech failed");
+          if (ev.type !== "speech.audio.delta" || !ev.audio) continue;
+          var part = decodePCMChunk(pending, ev.audio);
+          pending = part.pending;
+          if (!part.samples.length) continue;
+          var b = ctx.createBuffer(1, part.samples.length, 24000);
+          b.copyToChannel(part.samples, 0);
+          var src = ctx.createBufferSource();
+          src.buffer = b; src.connect(ctx.destination);
+          sources.push(src);
+          src.onended = function () { var k = sources.indexOf(this); if (k > -1) sources.splice(k, 1); };
+          playhead = Math.max(playhead, ctx.currentTime + 0.05);
+          src.start(playhead);
+          playhead += b.duration;
+        }
+      }
+      if (playCtl && playCtl.controller === ctl) playCtl = null;
+    } catch (e) {
+      if (playCtl && playCtl.controller === ctl) playCtl = null;
+      try { ctx.close(); } catch (e2) {}
+      if (!ctl.signal.aborted) fallbackSpeak(t);
+    }
   }
 
   ["Admission codes?", "Departments", "How to reach?", "Placements"].forEach(function (q) {
@@ -122,13 +195,13 @@
     if (o) {
       if (!body.children.length) add("bot", "Hi! I'm Anya 👋 your LBRCE guide. Ask me about admissions, departments, transport or placements.");
       setTimeout(function () { input.focus(); }, 300);
-    } else if ("speechSynthesis" in window) speechSynthesis.cancel();
+    } else stopSpeaking();
   }
   fab.onclick = function () { toggle(); };
   $(".lbx-close").onclick = function () { toggle(false); };
   ttsBtn.onclick = function () {
     ttsOn = !ttsOn; ttsBtn.classList.toggle("off", !ttsOn);
-    if (!ttsOn && "speechSynthesis" in window) speechSynthesis.cancel();
+    if (!ttsOn) stopSpeaking();
   };
 
   async function send(text) {
@@ -178,7 +251,7 @@
     rec.onerror = rec.onend;
     micBtn.onclick = function () {
       if (listening) return rec.stop();
-      if ("speechSynthesis" in window) speechSynthesis.cancel();
+      stopSpeaking();
       listening = true; micBtn.classList.add("rec"); rec.start();
     };
   }
