@@ -26,12 +26,12 @@
     -webkit-backdrop-filter:blur(18px) saturate(160%);border:1px solid rgba(148,163,184,.35);box-shadow:0 30px 60px -12px rgba(15,23,42,.35);
     opacity:0;transform:translateY(24px) scale(.98);pointer-events:none;transition:opacity .3s ease,transform .35s cubic-bezier(.2,.9,.3,1.2)}
   .lbx-panel.open{opacity:1;transform:none;pointer-events:auto}
-  .lbx-head{display:flex;align-items:center;gap:12px;padding:16px 16px;background:linear-gradient(135deg,#0f172a,#334155);color:#f8fafc}
+  .lbx-head{display:flex;align-items:center;gap:10px;padding:16px 14px;background:linear-gradient(135deg,#0f172a,#334155);color:#f8fafc}
   .lbx-av{position:relative;width:46px;height:46px;border-radius:50%;border:2px solid rgba(255,255,255,.7);background:linear-gradient(145deg,#e2e8f0,#94a3b8);display:grid;place-items:center;color:#0f172a;font-weight:700;font-size:17px}
   .lbx-av img,.lbx-fab img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}
   .lbx-av i{position:absolute;right:0;bottom:1px;width:12px;height:12px;border-radius:50%;background:#22c55e;border:2px solid #1e293b;animation:lbxp 2s infinite}
   @keyframes lbxp{0%{box-shadow:0 0 0 0 rgba(34,197,94,.6)}70%{box-shadow:0 0 0 7px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
-  .lbx-title{flex:1;line-height:1.2}.lbx-title b{display:block;font-size:15px}.lbx-title span{font-size:12px;color:#cbd5e1}
+  .lbx-title{flex:1;line-height:1.2}.lbx-title b{display:block;font-size:15px;white-space:nowrap}.lbx-title span{font-size:12px;color:#cbd5e1}
   .lbx-ib{background:rgba(255,255,255,.1);border:0;color:#f8fafc;width:34px;height:34px;border-radius:10px;cursor:pointer;display:grid;place-items:center}
   .lbx-end{width:auto;padding:0 11px;font-size:12px;font-weight:600;gap:5px;display:inline-flex;align-items:center;white-space:nowrap}
   .lbx-ended{align-self:center;text-align:center;margin:auto 0;padding:20px 16px;color:#334155;font-size:14px}
@@ -77,7 +77,7 @@
   root.innerHTML =
     '<button class="lbx-fab" aria-label="Chat with Anya, LBRCE Guide">' + FABIN + '</button>' +
     '<section class="lbx-panel" role="dialog" aria-label="LBRCE Assistant">' +
-    '<header class="lbx-head"><div class="lbx-av"><img src="' + AVATAR + '" alt="Anya" /><i></i></div><div class="lbx-title"><b>Anya, LBRCE Guide</b><span>Online · Usually replies instantly</span></div>' +
+    '<header class="lbx-head"><div class="lbx-av"><img src="' + AVATAR + '" alt="Anya" /><i></i></div><div class="lbx-title"><b>Anya, LBRCE Guide</b><span>Online now</span></div>' +
     '<button class="lbx-ib lbx-end" title="End this chat">End chat</button><button class="lbx-ib lbx-tts" title="Read answers aloud">' + I.vol + '</button><button class="lbx-ib lbx-close" title="Close">' + I.x + "</button></header>" +
     '<div class="lbx-body" aria-live="polite"></div>' +
     '<div class="lbx-chips"></div>' +
