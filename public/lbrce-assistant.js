@@ -29,6 +29,10 @@
   @keyframes lbxp{0%{box-shadow:0 0 0 0 rgba(34,197,94,.6)}70%{box-shadow:0 0 0 7px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
   .lbx-title{flex:1;line-height:1.2}.lbx-title b{display:block;font-size:15px}.lbx-title span{font-size:12px;color:#cbd5e1}
   .lbx-ib{background:rgba(255,255,255,.1);border:0;color:#f8fafc;width:34px;height:34px;border-radius:10px;cursor:pointer;display:grid;place-items:center}
+  .lbx-end{width:auto;padding:0 11px;font-size:12px;font-weight:600;gap:5px;display:inline-flex;align-items:center;white-space:nowrap}
+  .lbx-ended{align-self:center;text-align:center;margin:auto 0;padding:20px 16px;color:#334155;font-size:14px}
+  .lbx-ended b{display:block;font-size:16px;color:#0f172a;margin-bottom:4px}
+  .lbx-new{margin-top:14px;border:0;cursor:pointer;background:#0f172a;color:#fff;padding:10px 18px;border-radius:12px;font-size:13px;font-weight:600}
   .lbx-ib:hover{background:rgba(255,255,255,.2)}.lbx-ib svg{width:17px;height:17px}.lbx-ib.off{opacity:.5}
   .lbx-body{flex:1;overflow-y:auto;padding:18px 14px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}
   .lbx-m{max-width:84%;padding:10px 13px;border-radius:16px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word;animation:lbxin .25s ease}
@@ -69,7 +73,7 @@
     '<button class="lbx-fab" aria-label="Chat with Anya, LBRCE Guide">' + I.chat + '<span class="lbx-ping"></span></button>' +
     '<section class="lbx-panel" role="dialog" aria-label="LBRCE Assistant">' +
     '<header class="lbx-head"><div class="lbx-av">A<i></i></div><div class="lbx-title"><b>Anya, LBRCE Guide</b><span>Online · Usually replies instantly</span></div>' +
-    '<button class="lbx-ib lbx-tts" title="Read answers aloud">' + I.vol + '</button><button class="lbx-ib lbx-close" title="Close">' + I.x + "</button></header>" +
+    '<button class="lbx-ib lbx-end" title="End this chat">End chat</button><button class="lbx-ib lbx-tts" title="Read answers aloud">' + I.vol + '</button><button class="lbx-ib lbx-close" title="Close">' + I.x + "</button></header>" +
     '<div class="lbx-body" aria-live="polite"></div>' +
     '<div class="lbx-chips"></div>' +
     '<form class="lbx-foot"><button type="button" class="lbx-btn lbx-mic" title="Speak">' + I.mic + '</button>' +
@@ -81,7 +85,8 @@
   var $ = function (s) { return root.querySelector(s); };
   var fab = $(".lbx-fab"), panel = $(".lbx-panel"), body = $(".lbx-body"), form = $(".lbx-foot"),
     input = $(".lbx-in"), sendBtn = $(".send"), micBtn = $(".lbx-mic"), ttsBtn = $(".lbx-tts"), chips = $(".lbx-chips");
-  var history = [], busy = false, ttsOn = true;
+  var history = [], busy = false, ttsOn = true, ended = false;
+  var endBtn = $(".lbx-end");
 
   function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function md(s) {
@@ -193,7 +198,7 @@
     fab.classList.toggle("hide", o);
     fab.innerHTML = (o ? I.x : I.chat) + (o ? "" : '<span class="lbx-ping"></span>');
     if (o) {
-      if (!body.children.length) add("bot", "Hi! I'm Anya 👋 your LBRCE guide. Ask me about admissions, departments, transport or placements.");
+      if (!body.children.length && !ended) add("bot", "Hi! I'm Anya 👋 your LBRCE guide. Ask me about admissions, departments, transport or placements.");
       setTimeout(function () { input.focus(); }, 300);
     } else stopSpeaking();
   }
@@ -204,9 +209,31 @@
     if (!ttsOn) stopSpeaking();
   };
 
+  function endChat() {
+    stopSpeaking();
+    if (typeof rec !== "undefined" && rec) { try { rec.stop(); } catch (e) {} }
+    ended = true; history = []; body.innerHTML = ""; chips.style.display = "none";
+    input.disabled = true; sendBtn.disabled = true; micBtn.disabled = true; endBtn.style.display = "none";
+    var d = document.createElement("div");
+    d.className = "lbx-ended";
+    d.innerHTML = "<b>Chat ended 👋</b>Thanks for chatting with LBRCE! Come back anytime.<br>";
+    var nb = document.createElement("button");
+    nb.type = "button"; nb.className = "lbx-new"; nb.textContent = "Start new chat";
+    nb.onclick = newChat;
+    d.appendChild(nb);
+    body.appendChild(d);
+  }
+  function newChat() {
+    ended = false; history = []; body.innerHTML = ""; chips.style.display = "";
+    input.disabled = false; sendBtn.disabled = false; micBtn.disabled = false; endBtn.style.display = "";
+    add("bot", "Hi! I'm Anya 👋 your LBRCE guide. Ask me about admissions, departments, transport or placements.");
+    input.focus();
+  }
+  endBtn.onclick = endChat;
+
   async function send(text) {
     text = (text || "").trim();
-    if (!text || busy) return;
+    if (!text || busy || ended) return;
     busy = true; sendBtn.disabled = true; chips.style.display = "none";
     input.value = "";
     add("user", text);
@@ -237,10 +264,11 @@
   }
   form.onsubmit = function (e) { e.preventDefault(); send(input.value); };
 
+  var rec = null;
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) micBtn.style.display = "none";
   else {
-    var rec = new SR(), listening = false;
+    rec = new SR(); var listening = false;
     rec.lang = "en-IN"; rec.interimResults = true;
     rec.onresult = function (e) {
       var t = ""; for (var i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
