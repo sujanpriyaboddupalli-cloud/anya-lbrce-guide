@@ -29,28 +29,92 @@ export const Route = createFileRoute("/api/public/tts")({
         if (!text) {
           return new Response("Please send text.", { status: 400, headers: CORS });
         }
-        const key = process.env["LOVABLE_API_KEY"];
-        if (!key) {
+        const geminiKey = process.env["GEMINI_API_KEY"];
+        const lovableKey = process.env["LOVABLE_API_KEY"];
+        if (!geminiKey && !lovableKey) {
           return new Response("Voice is not configured.", { status: 500, headers: CORS });
         }
 
+        const speechConfig = {
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: TTS_VOICE } },
+        };
+        const contents = [{ role: "user", parts: [{ text: STEER + text }] }];
+
         let upstream: Response;
         try {
+          if (geminiKey) {
+            // Own-key mode: call Google directly, then convert to the widget's SSE format.
+            const g = await fetch(
+              "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:streamGenerateContent?alt=sse",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
+                body: JSON.stringify({
+                  contents,
+                  generationConfig: { responseModalities: ["AUDIO"], speechConfig },
+                }),
+                signal: request.signal,
+              },
+            );
+            if (!g.ok || !g.body) {
+              const detail = await g.text().catch(() => "");
+              return new Response(detail || "Voice unavailable.", { status: g.status, headers: CORS });
+            }
+            const reader = g.body.getReader();
+            const dec = new TextDecoder();
+            const enc = new TextEncoder();
+            const out = new ReadableStream({
+              async start(controller) {
+                let buf = "";
+                try {
+                  while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    buf += dec.decode(value, { stream: true });
+                    const lines = buf.split("\n");
+                    buf = lines.pop() ?? "";
+                    for (const line of lines) {
+                      const t = line.trim();
+                      if (!t.startsWith("data:")) continue;
+                      try {
+                        const parts = JSON.parse(t.slice(5).trim())?.candidates?.[0]?.content?.parts ?? [];
+                        for (const part of parts) {
+                          const audio = part?.inlineData?.data;
+                          if (audio) {
+                            controller.enqueue(
+                              enc.encode(`data: ${JSON.stringify({ type: "speech.audio.delta", audio })}\n\n`),
+                            );
+                          }
+                        }
+                      } catch {
+                        /* partial */
+                      }
+                    }
+                  }
+                } catch {
+                  /* aborted */
+                }
+                controller.close();
+              },
+            });
+            return new Response(out, {
+              headers: {
+                ...CORS,
+                "Content-Type": "text/event-stream; charset=utf-8",
+                "Cache-Control": "no-cache, no-transform",
+              },
+            });
+          }
           upstream = await fetch("https://ai.gateway.lovable.dev/v1/audio/speech", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${key}`,
+              Authorization: `Bearer ${lovableKey}`,
             },
             body: JSON.stringify({
               model: TTS_MODEL,
-              contents: [{ role: "user", parts: [{ text: STEER + text }] }],
-              generationConfig: {
-                responseModalities: ["AUDIO"],
-                speechConfig: {
-                  voiceConfig: { prebuiltVoiceConfig: { voiceName: TTS_VOICE } },
-                },
-              },
+              contents,
+              generationConfig: { responseModalities: ["AUDIO"], speechConfig },
               stream_format: "sse",
             }),
             signal: request.signal,
