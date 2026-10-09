@@ -1,24 +1,47 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect } from "react";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Anya — LBRCE AI Assistant Widget" },
+      { name: "description", content: "Embeddable AI chatbot with voice for Lakireddy Bali Reddy College of Engineering." },
+      { property: "og:title", content: "Anya — LBRCE AI Assistant Widget" },
+      { property: "og:description", content: "Embeddable AI chatbot with voice for LBRCE's website." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
+  useEffect(() => {
+    const s = document.createElement("script");
+    s.src = "/lbrce-assistant.js";
+    s.defer = true;
+    document.body.appendChild(s);
+  }, []);
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://YOUR-APP-DOMAIN";
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+    <main className="min-h-screen bg-background px-6 py-16 text-foreground">
+      <div className="mx-auto max-w-2xl space-y-8">
+        <header className="space-y-3">
+          <p className="text-sm uppercase tracking-widest text-muted-foreground">LBRCE · Mylavaram</p>
+          <h1 className="text-4xl font-semibold tracking-tight">Anya, the LBRCE Guide</h1>
+          <p className="text-muted-foreground">
+            A voice-enabled AI assistant for the college website. Try it with the chat button in the bottom-right corner.
+          </p>
+        </header>
+        <section className="space-y-3 rounded-2xl border border-border bg-card p-6">
+          <h2 className="font-semibold">Add it to lbrce.ac.in</h2>
+          <p className="text-sm text-muted-foreground">Paste this one line before the closing body tag of any page:</p>
+          <pre className="overflow-x-auto rounded-lg bg-primary p-4 text-sm text-primary-foreground">
+            {`<script src="${origin}/lbrce-assistant.js" defer></script>`}
+          </pre>
+          <p className="text-xs text-muted-foreground">Use your published app address once you publish.</p>
+        </section>
+      </div>
+    </main>
   );
 }
