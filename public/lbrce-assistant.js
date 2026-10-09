@@ -135,7 +135,7 @@
   }
   async function speak(text) {
     if (!ttsOn) return;
-    var t = text.replace(/[*#_`>]/g, " ").replace(/https?:\/\/\S+/g, " the website ").replace(/\s+/g, " ").trim();
+    var t = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, " ").replace(/[*#_`>]/g, " ").replace(/https?:\/\/\S+/g, " the website ").replace(/\s+/g, " ").trim();
     if (!t) return;
     stopSpeaking();
     var AC = window.AudioContext || window.webkitAudioContext;
@@ -198,7 +198,7 @@
     fab.classList.toggle("hide", o);
     fab.innerHTML = (o ? I.x : I.chat) + (o ? "" : '<span class="lbx-ping"></span>');
     if (o) {
-      if (!body.children.length && !ended) add("bot", "Hi! I'm Anya 👋 your LBRCE guide. Ask me about admissions, departments, transport or placements.");
+      if (!body.children.length && !ended) greet();
       setTimeout(function () { input.focus(); }, 300);
     } else stopSpeaking();
   }
@@ -209,6 +209,11 @@
     if (!ttsOn) stopSpeaking();
   };
 
+  function greet() {
+    var g = "Hi! I'm Anya 👋 your LBRCE guide. Ask me about admissions, departments, transport or placements.";
+    add("bot", g);
+    speak(g);
+  }
   function endChat() {
     stopSpeaking();
     if (typeof rec !== "undefined" && rec) { try { rec.stop(); } catch (e) {} }
@@ -226,7 +231,7 @@
   function newChat() {
     ended = false; history = []; body.innerHTML = ""; chips.style.display = "";
     input.disabled = false; sendBtn.disabled = false; micBtn.disabled = false; endBtn.style.display = "";
-    add("bot", "Hi! I'm Anya 👋 your LBRCE guide. Ask me about admissions, departments, transport or placements.");
+    greet();
     input.focus();
   }
   endBtn.onclick = endChat;
